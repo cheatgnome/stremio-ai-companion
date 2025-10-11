@@ -36,9 +36,35 @@ class LLMService:
         self._default_temperature = 0.7
         self._default_max_tokens = 5000
 
+    def _is_gpt5_model(self) -> bool:
+        """Check if the model is a GPT-5 family model."""
+        model_lower = self.model.lower()
+        return model_lower.startswith(("gpt-5", "gpt5"))
+
+    def _is_gpt5_chat(self) -> bool:
+        """Check if the model is specifically gpt-5-chat (which has limited structured output support)."""
+        model_lower = self.model.lower()
+        return "gpt-5-chat" in model_lower or "gpt5-chat" in model_lower
+
+    def _is_gpt_oss_model(self) -> bool:
+        """Check if the model is a GPT-OSS open-weight model."""
+        model_lower = self.model.lower()
+        return "gpt-oss" in model_lower or "gptoss" in model_lower
+
     def _structured_output_supported(self):
+        """
+        Check if the model supports structured outputs (.parse()).
+
+        Returns True if supported, raises StructuredOutputNotSupported otherwise.
+        """
+        # v1beta endpoints don't support structured outputs
         if self.base_url.endswith("/v1beta/openai/"):
             raise StructuredOutputNotSupported
+
+        # gpt-5-chat initially doesn't support structured outputs
+        if self._is_gpt5_chat():
+            raise StructuredOutputNotSupported
+
         return True
 
     @property
@@ -208,14 +234,22 @@ If this is about current streaming content, use web search for accurate informat
         """
         self.logger.debug(f"Attempting Structured Output with model '{self.model}'")
 
-        response = await self.client.chat.completions.parse(
-            model=self.model,
-            messages=messages,
-            response_format=response_model,
-            temperature=self._default_temperature,
-            max_tokens=self._default_max_tokens,
-            timeout=self._default_timeout,
-        )
+        # Build API call parameters
+        api_params = {
+            "model": self.model,
+            "messages": messages,
+            "response_format": response_model,
+            "temperature": self._default_temperature,
+            "max_tokens": self._default_max_tokens,
+            "timeout": self._default_timeout,
+        }
+
+        # Add GPT-5 specific parameters
+        if self._is_gpt5_model():
+            # Use "low" verbosity for concise, structured responses
+            api_params["verbosity"] = "low"
+
+        response = await self.client.chat.completions.parse(**api_params)
 
         parsed_object = response.choices[0].message.parsed
         if not parsed_object:
@@ -242,14 +276,22 @@ If this is about current streaming content, use web search for accurate informat
             }
         ]
 
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=messages_with_fallback,
-            response_format={"type": "json_object"},
-            temperature=self._default_temperature,
-            max_tokens=self._default_max_tokens,
-            timeout=self._default_timeout,
-        )
+        # Build API call parameters
+        api_params = {
+            "model": self.model,
+            "messages": messages_with_fallback,
+            "response_format": {"type": "json_object"},
+            "temperature": self._default_temperature,
+            "max_tokens": self._default_max_tokens,
+            "timeout": self._default_timeout,
+        }
+
+        # Add GPT-5 specific parameters
+        if self._is_gpt5_model():
+            # Use "low" verbosity for concise, structured responses
+            api_params["verbosity"] = "low"
+
+        response = await self.client.chat.completions.create(**api_params)
 
         content = response.choices[0].message.content
         if not content:
