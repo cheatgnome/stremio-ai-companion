@@ -70,9 +70,13 @@ class ConfigValidationService:
         except openai.AuthenticationError as e:
             raise ValidationError("LLM", f"Invalid API key - please check your OpenAI API key; {str(e)}")
         except openai.NotFoundError as e:
-            raise ValidationError("LLM", f"Model '{config.model_name}' not found - please check the model name; {str(e)}")
+            raise ValidationError(
+                "LLM", f"Model '{config.model_name}' not found - please check the model name; {str(e)}"
+            )
         except openai.PermissionDeniedError as e:
-            raise ValidationError("LLM", f"Permission denied - your API key may not have access to this model; {str(e)}")
+            raise ValidationError(
+                "LLM", f"Permission denied - your API key may not have access to this model; {str(e)}"
+            )
         except openai.RateLimitError as e:
             raise ValidationError("LLM", f"Rate limit exceeded - please try again later; {str(e)}")
         except openai.APIConnectionError as e:

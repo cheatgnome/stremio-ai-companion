@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0]
+
+### Added
+- Support for GPT-5 and OpenAI OSS models
+- Searchable model selection in configuration UI
+- API error messages now displayed to users
+
+### Fixed
+- Fixed load screen rendering issues
+- Fixed custom base_url handler
+- Fixed double slash in URL paths
+
+### Updated
+- Dependency updates:
+  - fastapi: 0.116.1 → 0.118.0
+  - pydantic-settings: 2.10.1 → 2.11.0
+  - uvicorn[standard]: 0.35.0 → 0.37.0
+  - openai: 1.101.0 → 2.1.0
+  - pydantic: 2.11.7 → 2.11.10
+  - cryptography: 45.0.6 → 46.0.2
+  - pytest: 8.4.1 → 8.4.2
+- GitHub Actions updates (github-script, stale, setup-python)
+
 ## [0.12.0]
 
 ### Added
