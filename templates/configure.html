@@ -370,16 +370,29 @@
          validateTmdbToken();
 
          document.getElementById('configForm').addEventListener('submit', async function(e) {            e.preventDefault();
-            
+
             const submitBtn = document.querySelector('.submit-btn');
             const result = document.getElementById('result');
             const errorDiv = document.getElementById('error');
-            
+
             submitBtn.disabled = true;
             submitBtn.textContent = 'Generating...';
             result.style.display = 'none';
             errorDiv.style.display = 'none';
-            
+
+            // Handle custom base URL BEFORE creating FormData
+            const baseSelect = document.getElementById('openai_base_url');
+            const customBase = document.getElementById('openai_base_url_custom').value.trim();
+            if (baseSelect.value === 'custom' && customBase) {
+                let existingBaseUrl = this.querySelector('input[name="openai_base_url"][type="hidden"]');
+                if (existingBaseUrl) existingBaseUrl.remove();
+                const hiddenBaseUrl = document.createElement('input');
+                hiddenBaseUrl.type = 'hidden';
+                hiddenBaseUrl.name = 'openai_base_url';
+                hiddenBaseUrl.value = customBase;
+                this.appendChild(hiddenBaseUrl);
+            }
+
             const baseSel = document.getElementById('openai_base_url');
             const isOpenRouter = baseSel && baseSel.value === 'https://openrouter.ai/api/v1';
             const useOnline = document.getElementById('use_online_suffix')?.checked;
@@ -401,7 +414,31 @@
             hiddenModel.name = 'model_name';
             hiddenModel.value = modelValue || '';
             this.appendChild(hiddenModel);
-            
+
+            // Handle catalog checkboxes
+            const movieChecked = Array.from(document.querySelectorAll('input[name="include_catalogs_movies"]:checked')).map(cb => cb.value);
+            const seriesChecked = Array.from(document.querySelectorAll('input[name="include_catalogs_series"]:checked')).map(cb => cb.value);
+
+            // Remove any existing hidden fields for catalogs
+            this.querySelectorAll('input[name="include_catalogs_movies"][type="hidden"]').forEach(el => el.remove());
+            this.querySelectorAll('input[name="include_catalogs_series"][type="hidden"]').forEach(el => el.remove());
+
+            if (movieChecked.length > 0) {
+                const moviesField = document.createElement('input');
+                moviesField.type = 'hidden';
+                moviesField.name = 'include_catalogs_movies';
+                moviesField.value = movieChecked.join(',');
+                this.appendChild(moviesField);
+            }
+
+            if (seriesChecked.length > 0) {
+                const seriesField = document.createElement('input');
+                seriesField.type = 'hidden';
+                seriesField.name = 'include_catalogs_series';
+                seriesField.value = seriesChecked.join(',');
+                this.appendChild(seriesField);
+            }
+
             const formData = new FormData(this);
             
             try {
@@ -625,50 +662,6 @@
                  }, 0);
              });
 
-            document.getElementById('configForm').addEventListener('submit', function() {
-                const select = document.getElementById('openai_base_url');
-                const customBase = document.getElementById('openai_base_url_custom').value.trim();
-                if (select.value === 'custom') {
-                    const hidden = document.createElement('input');
-                    hidden.type = 'hidden';
-                    hidden.name = 'openai_base_url';
-                    hidden.value = customBase;
-                    this.appendChild(hidden);
-                }
-                const modelSel = document.getElementById('model_name');
-                let modelValue = '';
-                if (modelSel && modelSel.getAttribute('data-enhanced') === '1') {
-                    const input = modelSel.previousSibling && modelSel.previousSibling.querySelector('input');
-                    modelValue = input ? input.value.trim() : '';
-                } else if (modelSel) {
-                    modelValue = (modelSel.value || '').trim();
-                }
-                const baseSelectEl = document.getElementById('openai_base_url');
-                const isOpenRouter = baseSelectEl && baseSelectEl.value === 'https://openrouter.ai/api/v1';
-                const useOnline = document.getElementById('use_online_suffix')?.checked;
-                if (isOpenRouter && useOnline && modelValue && !modelValue.endsWith(':online')) {
-                    modelValue = modelValue + ':online';
-                }
-                if (modelValue) {
-                    const hiddenModel = document.createElement('input');
-                    hiddenModel.type = 'hidden';
-                    hiddenModel.name = 'model_name';
-                    hiddenModel.value = modelValue;
-                    this.appendChild(hiddenModel);
-                }
-                const movieChecked = Array.from(document.querySelectorAll('input[name="include_catalogs_movies"]:checked')).map(cb => cb.value);
-                const seriesChecked = Array.from(document.querySelectorAll('input[name="include_catalogs_series"]:checked')).map(cb => cb.value);
-                const moviesField = document.createElement('input');
-                moviesField.type = 'hidden';
-                moviesField.name = 'include_catalogs_movies';
-                moviesField.value = movieChecked;
-                this.appendChild(moviesField);
-                const seriesField = document.createElement('input');
-                seriesField.type = 'hidden';
-                seriesField.name = 'include_catalogs_series';
-                seriesField.value = seriesChecked;
-                this.appendChild(seriesField);
-            });
 
             function enhanceSearchableSelect(select) {
                 if (select.getAttribute('data-enhanced') === '1') return;
