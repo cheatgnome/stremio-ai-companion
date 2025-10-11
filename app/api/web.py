@@ -114,7 +114,7 @@ async def preview_page(request: Request, config: str):
         scheme = get_request_scheme(request)
 
         # Build manifest URLs for all types
-        base_url = f"{scheme}://{request.url.netloc}/config/{config}/"
+        base_url = f"{scheme}://{request.url.netloc}/config/{config}"
         manifest_urls = {
             "combined": f"{base_url}/manifest.json",
             "movie": f"{base_url}/movie/manifest.json",
