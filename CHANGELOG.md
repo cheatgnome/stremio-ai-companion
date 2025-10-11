@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0]
+
+### Improved
+- Prompting (reduce token usage)
+
 ## [0.13.0]
 
 ### Added

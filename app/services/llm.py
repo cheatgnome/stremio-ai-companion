@@ -33,7 +33,7 @@ class LLMService:
         self.base_url = config.openai_base_url or ""
         self.logger = logging.getLogger("stremio_ai_companion.LLMService")
         self._default_timeout = 30
-        self._default_temperature = 0.7
+        self._default_temperature = 0.4  # Lower temperature for more accurate, consistent results
         self._default_max_tokens = 5000
 
     def _is_gpt5_model(self) -> bool:
@@ -125,80 +125,39 @@ class LLMService:
         instructions = base_instructions[content_type]
         current_year = self._current_year
         current_month = self._current_month
-        current_week = self._current_week
 
-        system_prompt = f"""You are a {instructions['companion_type']}. Today is {self._current_date} ({current_week} of {current_month}).
+        system_prompt = f"""You are a {instructions['companion_type']}. Today is {self._current_date}.
 
-You will provide structured {instructions['content_name']} recommendations with the following fields:
-- title: The exact {instructions['content_name']} title (without year)
+Return structured {instructions['content_name']} recommendations with these fields:
+- title: The exact {instructions['content_name']} title (WITHOUT year)
 - year: The {instructions['date_description']} as an integer
 
-CRITICAL INSTRUCTION FOR STREAMING/CURRENT CONTENT QUERIES:
-If the user asks about:
-- What's new on streaming services (Netflix, Prime Video, Hulu, Disney+, Max, Apple TV+, etc.)
-- What's trending this week/month
-- New releases on streaming platforms
-- What's coming to streaming services
-- Current streaming content
+ACCURACY REQUIREMENTS:
+- Years MUST be accurate - this is critical for matching against databases
+- If unsure about a year, choose the most likely option
+- Do NOT hallucinate titles or years
+- Return only real, existing {instructions['content_plural']}
+- NEVER include the year in the title field
 
-YOU MUST:
-1. If possible use web search to find current information (your training data is outdated for this)
-2. Focus on {instructions['content_plural']} actually available NOW on major streaming services
+TIME CONTEXT (Current: {current_month} {current_year}):
+- "recent" or "new" = {current_year - 2} to {current_year}
+- "last year" = {current_year - 1}
+- "trending" or "popular" = focus on well-known, acclaimed titles from recent years
+- "this decade" or "2020s" = 2020 to {current_year}
+- Specific decades (e.g., "90s") = 1990-1999
 
-QUERY ANALYSIS INSTRUCTIONS:
-1. Identify the type of query:
-   - STREAMING/CURRENT QUERIES (requires web search):
-     * "what's new on Netflix/streaming this week/month"
-     * "trending on streaming services"
-     * "new releases on [platform]"
-     * "what's coming to streaming in [month]"
-   - Specific {instructions['content_name']} (e.g., "The Matrix", "Breaking Bad")
-   - Franchise/series query (e.g., "Mission Impossible movies", "Star Wars films")
-   - Actor/Director filmography (e.g., "Tom Cruise movies", "Christopher Nolan films")
-   - Genre-based recommendations (e.g., "sci-fi movies", "crime dramas")
-   - Mood/theme-based recommendations (e.g., "feel-good movies", "dark psychological thrillers")
-   - Time-based queries (e.g., "movies from the 80s", "recent releases")
-   - General recommendations (e.g., "something good to watch")
+QUERY TYPE STRATEGIES:
+1. Specific title: Return exact match plus direct sequels/prequels
+2. Franchise: List all official entries chronologically
+3. Actor/Director: Provide diverse, notable works with accurate years
+4. Genre/Mood: Match tone/theme, include variety of years
+5. Time period: Focus on specified era
+6. "Trending/Popular": Focus on acclaimed, well-known titles from {current_year - 3} to {current_year}. If you have tool access, search the web
 
-TIME-BASED QUERY HANDLING:
-- Current year is {current_year}
-- Current month is {current_month}
-- "this week" = current week ({current_week} of {current_month} {current_year})
-- "this month" = {current_month} {current_year}
-- "past year" or "last year" = {current_year - 1} to {current_year}
-- "recent" or "recently" = {current_year - 3} to {current_year}
-- "new" or "latest" = {current_year} (or current month for streaming queries)
-- "2020s" = 2020 to {current_year}
-- "last decade" = {current_year - 10} to {current_year}
-
-RECOMMENDATION STRATEGIES:
-
-For STREAMING/CURRENT CONTENT queries:
-- Preferably use web search to get up-to-date information
-- Mix new originals with newly added catalog titles
-- Consider trending or popular content on platforms
-
-For SPECIFIC {instructions['content_name'].upper()} queries:
-- Return only that exact {instructions['content_name']} and its direct sequels/prequels
-- Include year for each entry
-
-For FRANCHISE queries:
-- List all official entries with their respective years
-
-For ACTOR/DIRECTOR queries:
-- Provide diverse selections with accurate years
-
-For GENRE/MOOD recommendations:
-- Match the specific mood or tone requested
-- Include a variety of years to show range
-
-CRITICAL REQUIREMENTS:
-- You must return not more than {max_results} {instructions['content_plural']}
-- Return only {instructions['content_plural']} recommendations, do NOT return {instructions['avoid_label']}
-- Each entry MUST have a title (string) and year (integer)
-- The year must be accurate - this is critical for identification
-- For streaming queries, use web search to ensure current information
-- Never include the year in the title field - it must be separate
+REQUIREMENTS:
+- Maximum {max_results} {instructions['content_plural']}
+- Return ONLY {instructions['content_plural']}, NOT {instructions['avoid_label']}
+- Each entry needs valid title (string) and year (integer)
 
 ORDERING PRINCIPLES:
 - For streaming queries: newest additions or most popular first
@@ -208,10 +167,9 @@ ORDERING PRINCIPLES:
 - For all others: best matches first
 """
 
-        user_prompt = f"""Generate exactly {max_results} {instructions['content_plural']} recommendations for this query: "{query}"
+        user_prompt = f"""Generate exactly {max_results} {instructions['content_plural']} recommendations for: "{query}"
 
-Provide your response as structured data with separate title and year fields.
-If this is about current streaming content, use web search for accurate information and include the streaming platform."""
+Provide structured data with separate title and year fields for each recommendation."""
 
         return [
             ChatCompletionSystemMessageParam(role="system", content=system_prompt),
@@ -330,17 +288,16 @@ If this is about current streaming content, use web search for accurate informat
                 suggestions = await self._try_fallback_completion(messages, response_model, field_name, max_results)
                 return suggestions
             except Exception as fallback_e:
-                self.logger.error(f"[{self.model}]Fallback completion also failed: {fallback_e}")
-                if content_type == ContentType.MOVIE:
-                    return [MovieSuggestion(title=query, year=2024)]
-                else:
-                    return [TVSeriesSuggestion(title=query, year=2024)]
+                self.logger.error(
+                    f"[{self.model}]Fallback completion also failed for query '{query}': {fallback_e}. "
+                    f"Returning empty results."
+                )
+                return []
         except Exception as e:
-            self.logger.error(f"[{self.model}]An unexpected LLM service error occurred: {e}")
-            if content_type == ContentType.MOVIE:
-                return [MovieSuggestion(title=query, year=2024)]
-            else:
-                return [TVSeriesSuggestion(title=query, year=2024)]
+            self.logger.error(
+                f"[{self.model}]Unexpected LLM service error for query '{query}': {e}. " f"Returning empty results."
+            )
+            return []
 
     def _filter_duplicates(
         self, suggestions: List[Union[MovieSuggestion, TVSeriesSuggestion]]
