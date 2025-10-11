@@ -67,20 +67,20 @@ class ConfigValidationService:
 
             self.logger.debug("LLM connection test successful")
 
-        except openai.AuthenticationError:
-            raise ValidationError("LLM", "Invalid API key - please check your OpenAI API key")
-        except openai.NotFoundError:
-            raise ValidationError("LLM", f"Model '{config.model_name}' not found - please check the model name")
-        except openai.PermissionDeniedError:
-            raise ValidationError("LLM", "Permission denied - your API key may not have access to this model")
-        except openai.RateLimitError:
-            raise ValidationError("LLM", "Rate limit exceeded - please try again later")
-        except openai.APIConnectionError:
+        except openai.AuthenticationError as e:
+            raise ValidationError("LLM", f"Invalid API key - please check your OpenAI API key; {str(e)}")
+        except openai.NotFoundError as e:
+            raise ValidationError("LLM", f"Model '{config.model_name}' not found - please check the model name; {str(e)}")
+        except openai.PermissionDeniedError as e:
+            raise ValidationError("LLM", f"Permission denied - your API key may not have access to this model; {str(e)}")
+        except openai.RateLimitError as e:
+            raise ValidationError("LLM", f"Rate limit exceeded - please try again later; {str(e)}")
+        except openai.APIConnectionError as e:
             raise ValidationError(
-                "LLM", f"Cannot connect to API at {config.openai_base_url} - please check the base URL"
+                "LLM", f"Cannot connect to API at {config.openai_base_url} - please check the base UR; {str(e)}L"
             )
-        except openai.APITimeoutError:
-            raise ValidationError("LLM", "Request timed out - the API may be experiencing issues")
+        except openai.APITimeoutError as e:
+            raise ValidationError("LLM", f"Request timed out - the API may be experiencing issues; {str(e)}")
         except Exception as e:
             raise ValidationError("LLM", f"Connection failed: {str(e)}")
 
