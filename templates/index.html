@@ -101,16 +101,19 @@
             function extractAndReconfigure() {
                 const url = document.getElementById('configUrl').value.trim();
                 if (!url) return;
-                
+
                 try {
-                    const urlObj = new URL(url);
-                    
+                    // Normalize URL by removing double slashes (except after protocol)
+                    const normalizedUrl = url.replace(/([^:]\/)\/+/g, '$1');
+                    const urlObj = new URL(normalizedUrl);
+
                     // Extract config from path-based formats:
                     // - /config/{config}/manifest.json (combined)
                     // - /config/{config}/adult/{adult}/manifest.json (deprecated - adult flag ignored)
                     // - /config/{config}/movie/manifest.json (movie)
                     // - /config/{config}/series/manifest.json (series)
-                    const pathMatch = urlObj.pathname.match(/\/config\/([^\/]+)\/.+\/manifest\.json$/);
+                    // Match any URL that has /config/{config}/ followed by anything ending in manifest.json
+                    const pathMatch = urlObj.pathname.match(/\/config\/([^\/]+)\/(?:.*\/)?manifest\.json$/);
                     if (pathMatch) {
                         const config = pathMatch[1];
                         const qs = `?config=${encodeURIComponent(config)}`;
