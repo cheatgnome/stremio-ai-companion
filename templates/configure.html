@@ -697,7 +697,9 @@
                 function render(filter) {
                     list.innerHTML = '';
                     const q = (filter || '').toLowerCase();
-                    const sorted = options
+                    // Filter options based on the search query
+                    const filtered = options.filter(o => !q || o.value.toLowerCase().includes(q));
+                    const sorted = filtered
                         .slice()
                         .sort((a, b) => {
                             const ea = q && a.value.toLowerCase() === q;
@@ -707,6 +709,14 @@
                             return a.idx - b.idx; // otherwise preserve original order
                         })
                         .slice(0, 200);
+                    if (sorted.length === 0 && q) {
+                        const noResults = document.createElement('div');
+                        noResults.textContent = 'No matching models found';
+                        noResults.style.padding = '0.5rem 0.75rem';
+                        noResults.style.opacity = '0.6';
+                        noResults.style.fontStyle = 'italic';
+                        list.appendChild(noResults);
+                    }
                     sorted.forEach(({ value: v }) => {
                         const item = document.createElement('div');
                         item.textContent = v;
@@ -717,7 +727,7 @@
                         item.addEventListener('mouseout', () => item.style.background = 'transparent');
                         list.appendChild(item);
                     });
-                    list.style.display = 'block';
+                    list.style.display = sorted.length > 0 || q ? 'block' : 'none';
                 }
                 input.addEventListener('input', () => render(input.value));
                 input.addEventListener('focus', () => render(input.value));
