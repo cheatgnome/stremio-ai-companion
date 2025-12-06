@@ -1,4 +1,7 @@
 # Stremio AI Companion
+> [!IMPORTANT]
+> This repository is archived. I highly recommend [Stremio AI Search](https://github.com/itcon-pty-au/stremio-ai-search) or [AIOMetadata](https://github.com/cedya77/aiometadata) to continue using LLMs for content search. 
+
 
 ## [![CI](https://github.com/willtho89/stremio-ai-companion/actions/workflows/ci.yml/badge.svg)](https://github.com/willtho89/stremio-ai-companion/actions/workflows/ci.yml) [![CD](https://github.com/willtho89/stremio-ai-companion/actions/workflows/cd.yml/badge.svg)](https://github.com/willtho89/stremio-ai-companion/actions/workflows/cd.yml) [![Security](https://github.com/willtho89/stremio-ai-companion/actions/workflows/security.yml/badge.svg)](https://github.com/willtho89/stremio-ai-companion/actions/workflows/security.yml)
 
