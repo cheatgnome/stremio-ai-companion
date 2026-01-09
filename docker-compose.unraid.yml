@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   stremio-ai-companion:
-    image: ${GHCR_IMAGE:-ghcr.io/your-github-username/stremio-ai-companion:latest}
+    image: ${GHCR_IMAGE:-ghcr.io/willtho89/stremio-ai-companion:latest}
     network_mode: bridge
     user: "99:100"
     ports:
@@ -30,6 +30,8 @@ services:
       # - ALL_PROXY=socks5h://warp:1080
       # - NO_PROXY=localhost,127.0.0.1
 
+    sysctls:
+      - vm.overcommit_memory=1
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/', timeout=10)"]

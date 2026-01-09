@@ -13,7 +13,15 @@ export REDIS_DATA_DIR="${REDIS_DATA_DIR:-/data/redis}"
 
 # Start embedded Redis unless using an external host
 if [ "$REDIS_HOST" = "127.0.0.1" ] || [ "$REDIS_HOST" = "localhost" ]; then
-    mkdir -p "$REDIS_DATA_DIR"
+    if ! mkdir -p "$REDIS_DATA_DIR" 2>/dev/null; then
+        echo "WARN: Unable to create REDIS_DATA_DIR at $REDIS_DATA_DIR. Falling back to /tmp/redis."
+        REDIS_DATA_DIR="/tmp/redis"
+        mkdir -p "$REDIS_DATA_DIR"
+    elif [ ! -w "$REDIS_DATA_DIR" ]; then
+        echo "WARN: REDIS_DATA_DIR at $REDIS_DATA_DIR is not writable. Falling back to /tmp/redis."
+        REDIS_DATA_DIR="/tmp/redis"
+        mkdir -p "$REDIS_DATA_DIR"
+    fi
     echo "Starting embedded Redis at $REDIS_HOST:$REDIS_PORT (db $REDIS_DB)"
     redis-server --bind 0.0.0.0 --port "$REDIS_PORT" --dir "$REDIS_DATA_DIR" &
 else
