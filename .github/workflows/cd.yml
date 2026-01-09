@@ -1,63 +1,24 @@
-name: CD
+name: Publish Docker Image
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
     branches: [ main, master ]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  should-deploy:
-    name: Check if deploy should run
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  build-and-push:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    outputs:
-      changed: ${{ steps.check.outputs.changed }}
-      version: ${{ steps.app_version.outputs.version }}
-    steps:
-      - name: Read app version
-        id: app_version
-        run: |
-          echo "version=$(python - <<'PY'
-          from pathlib import Path
-          import re
-          init = Path('app/__init__.py').read_text()
-          m = re.search(r'__version__\s*=\s*\"([^\"]+)\"', init)
-          print(m.group(1) if m else '0.0.0')
-          PY
-          )" >> $GITHUB_OUTPUT
-
-      - name: Check if app/__init__.py changed in head commit
-        id: check
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const sha = context.payload.workflow_run.head_sha;
-            const commit = await github.rest.repos.getCommit({ owner, repo, ref: sha });
-            const changed = (commit.data.files || []).some(f => f.filename === 'app/__init__.py');
-            core.info(`app/__init__.py changed: ${changed}`);
-            core.setOutput('changed', changed ? 'true' : 'false');
-
-  build-and-push:
-    name: Build and Push Docker Image
-    needs: [should-deploy]
-    if: ${{ needs.should-deploy.outputs.changed == 'true' && needs.should-deploy.outputs.version != '0.0.0' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
       packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -91,7 +52,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.app_version.outputs.version }}
+            type=raw,value=${{ steps.app_version.outputs.version }},enable=${{ steps.app_version.outputs.version != '0.0.0' }}
             type=sha,prefix={{branch}}-
             type=ref,event=branch
 
@@ -109,27 +70,3 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VERSION=${{ steps.app_version.outputs.version }}
             VCS_REF=${{ github.sha }}
-
-      - name: Create git tag for version
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const version = `${{ steps.app_version.outputs.version }}`;
-            const tag = `${version}`;
-            const sha = context.payload.workflow_run.head_sha;
-            if (!version || version === '0.0.0') {
-              core.warning('Version is empty or 0.0.0; skipping tag creation.');
-              return;
-            }
-            try {
-              await github.rest.git.getRef({ owner, repo, ref: `tags/${tag}` });
-              core.info(`Tag ${tag} already exists; skipping.`);
-            } catch (e) {
-              if (e.status === 404) {
-                await github.rest.git.createRef({ owner, repo, ref: `refs/tags/${tag}`, sha });
-                core.info(`Created tag ${tag} at ${sha}`);
-              } else {
-                throw e;
-              }
-            }

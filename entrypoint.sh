@@ -5,6 +5,21 @@
 
 set -e
 
+# Configure embedded Redis defaults when not provided
+export REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
+export REDIS_PORT="${REDIS_PORT:-6379}"
+export REDIS_DB="${REDIS_DB:-0}"
+export REDIS_DATA_DIR="${REDIS_DATA_DIR:-/data/redis}"
+
+# Start embedded Redis unless using an external host
+if [ "$REDIS_HOST" = "127.0.0.1" ] || [ "$REDIS_HOST" = "localhost" ]; then
+    mkdir -p "$REDIS_DATA_DIR"
+    echo "Starting embedded Redis at $REDIS_HOST:$REDIS_PORT (db $REDIS_DB)"
+    redis-server --bind 0.0.0.0 --port "$REDIS_PORT" --dir "$REDIS_DATA_DIR" &
+else
+    echo "Using external Redis at $REDIS_HOST:$REDIS_PORT"
+fi
+
 # Calculate workers based on CPU cores if not specified
 if [ -z "$UVICORN_WORKERS" ] || [ "$UVICORN_WORKERS" = "0" ]; then
     # Get number of CPU cores

@@ -7,7 +7,8 @@ RUN apk add --no-cache \
     gcc \
     musl-dev \
     libffi-dev \
-    openssl-dev
+    openssl-dev \
+    redis
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -20,7 +21,10 @@ COPY . .
 RUN chmod +x /app/entrypoint.sh
 
 # Create non-root user (Alpine style)
-RUN adduser -D -u 1000 appuser && chown -R appuser:appuser /app
+RUN adduser -D -u 1000 appuser \
+    && mkdir -p /data/redis \
+    && chmod -R 777 /data \
+    && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
