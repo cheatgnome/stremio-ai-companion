@@ -41,6 +41,12 @@ class LLMService:
         model_lower = self.model.lower()
         return model_lower.startswith(("gpt-5", "gpt5"))
 
+    def _max_tokens_param(self) -> dict:
+        """Return the correct max token parameter for the current model."""
+        if self._is_gpt5_model():
+            return {"max_completion_tokens": self._default_max_tokens}
+        return {"max_tokens": self._default_max_tokens}
+
     def _is_gpt5_chat(self) -> bool:
         """Check if the model is specifically gpt-5-chat (which has limited structured output support)."""
         model_lower = self.model.lower()
@@ -198,9 +204,9 @@ Provide structured data with separate title and year fields for each recommendat
             "messages": messages,
             "response_format": response_model,
             "temperature": self._default_temperature,
-            "max_tokens": self._default_max_tokens,
             "timeout": self._default_timeout,
         }
+        api_params.update(self._max_tokens_param())
 
         # Add GPT-5 specific parameters
         if self._is_gpt5_model():
@@ -240,9 +246,9 @@ Provide structured data with separate title and year fields for each recommendat
             "messages": messages_with_fallback,
             "response_format": {"type": "json_object"},
             "temperature": self._default_temperature,
-            "max_tokens": self._default_max_tokens,
             "timeout": self._default_timeout,
         }
+        api_params.update(self._max_tokens_param())
 
         # Add GPT-5 specific parameters
         if self._is_gpt5_model():

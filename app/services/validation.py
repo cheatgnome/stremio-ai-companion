@@ -52,11 +52,18 @@ class ConfigValidationService:
                 ChatCompletionUserMessageParam(role="user", content="Test"),
             ]
 
+            model_lower = config.model_name.lower()
+            token_param = (
+                {"max_completion_tokens": 30}
+                if model_lower.startswith(("gpt-5", "gpt5"))
+                else {"max_tokens": 30}
+            )
+
             response = await client.chat.completions.create(
                 model=config.model_name,
                 messages=messages,
-                max_tokens=30,
                 temperature=0,
+                **token_param,
             )
 
             if not response.choices:

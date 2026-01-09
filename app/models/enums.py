@@ -19,6 +19,7 @@ class LLMProvider(str, Enum):
     OPENAI = "https://api.openai.com/v1"
     ANTHROPIC = "https://api.anthropic.com/v1"
     GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    PERPLEXITY = "https://api.perplexity.ai"
 
 
 class Languages(Enum):
