@@ -1,4 +1,4 @@
-FROM python:3.13.7-alpine
+FROM python:3.12-alpine
 
 WORKDIR /app
 
@@ -7,8 +7,7 @@ RUN apk add --no-cache \
     gcc \
     musl-dev \
     libffi-dev \
-    openssl-dev \
-    redis
+    openssl-dev
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -23,8 +22,7 @@ RUN chmod +x /app/entrypoint.sh
 # Create non-root user (Alpine style)
 RUN adduser -D -u 1000 appuser \
     && mkdir -p /data/redis \
-    && chmod -R 777 /data \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app /data
 USER appuser
 
 # Expose port

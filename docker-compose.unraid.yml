@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   stremio-ai-companion:
-    image: ${GHCR_IMAGE:-ghcr.io/cheatgnome/stremio-ai-companion:latest}
+    image: stremio-ai-companion:20260109042125
     container_name: AI-Companion
     network_mode: bridge
     user: "99:100"
