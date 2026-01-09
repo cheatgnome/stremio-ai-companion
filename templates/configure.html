@@ -201,7 +201,8 @@
                         LLMProvider.OPENROUTER.value: 'OpenRouter',
                         LLMProvider.OPENAI.value: 'OpenAI',
                         LLMProvider.ANTHROPIC.value: 'Anthropic',
-                        LLMProvider.GEMINI.value: 'Google Gemini (OpenAI Compatible)'
+                        LLMProvider.GEMINI.value: 'Google Gemini (OpenAI Compatible)',
+                        LLMProvider.PERPLEXITY.value: 'Perplexity'
                     } %}
                     {% for url,label in bases.items() %}
                     <option value="{{ url }}" {% if current_base == url %}selected{% endif %}>{{ label }} ({{ url }})</option>
@@ -507,7 +508,8 @@
                     'https://openrouter.ai/api/v1': {name: 'OpenRouter', keyLabel: 'OpenRouter API Key *', help: 'Get your Key from https://openrouter.ai/keys'},
                     'https://api.openai.com/v1': {name: 'OpenAI', keyLabel: 'OpenAI API Key *', help: 'Get your Key from https://platform.openai.com/api-keys'},
                     'https://api.anthropic.com/v1': {name: 'Anthropic', keyLabel: 'Anthropic API Key *', help: 'Get your Key from https://console.anthropic.com/account/keys'},
-                    'https://generativelanguage.googleapis.com/v1beta/openai/': {name: 'Google Gemini', keyLabel: 'Google Gemini Key *', help: 'Get your Key from https://aistudio.google.com/app/apikey'}
+                    'https://generativelanguage.googleapis.com/v1beta/openai/': {name: 'Google Gemini', keyLabel: 'Google Gemini Key *', help: 'Get your Key from https://aistudio.google.com/app/apikey'},
+                    'https://api.perplexity.ai': {name: 'Perplexity', keyLabel: 'Perplexity API Key *', help: 'Get your Key from https://www.perplexity.ai/settings/api'}
                 };
                 const selected = providerMap[this.value];
                 if (label && selected) label.textContent = selected.keyLabel;
