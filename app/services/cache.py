@@ -45,6 +45,11 @@ class CacheBackend(ABC):
         """Close the cache backend."""
         pass
 
+    @abstractmethod
+    async def ping(self) -> bool:
+        """Check connection health."""
+        pass
+
 
 class RedisBackend(CacheBackend):
     """Redis cache backend."""
@@ -99,6 +104,12 @@ class RedisBackend(CacheBackend):
         except RedisError as e:
             logger.warning(f"Redis close error: {e}")
 
+    async def ping(self) -> bool:
+        try:
+            return await self._redis.ping()
+        except Exception:
+            return False
+
 
 class MemoryBackend(CacheBackend):
     """In-memory LRU cache backend."""
@@ -139,12 +150,16 @@ class MemoryBackend(CacheBackend):
     async def close(self) -> None:
         pass  # No cleanup needed for memory backend
 
+    async def ping(self) -> bool:
+        return True
+
 
 class Cache:
     """High-level cache interface with automatic backend selection."""
 
     def __init__(self, ttl_seconds: int = 86400, maxsize: int = 256):
         self.ttl = ttl_seconds
+        self.maxsize = maxsize
         self._backend = self._create_backend(maxsize)
 
     def _create_backend(self, maxsize: int) -> CacheBackend:
@@ -188,6 +203,18 @@ class Cache:
     async def aclose(self) -> None:
         """Close the cache and cleanup resources."""
         await self._backend.close()
+
+    async def init(self) -> None:
+        """Initialize and verify backend connection."""
+        if self.is_redis:
+            try:
+                # Short timeout for initial check? The client has 5s configured.
+                if not await self._backend.ping():
+                    logger.warning("Redis ping failed. Switching to in-memory cache.")
+                    self._backend = MemoryBackend(maxsize=self.maxsize)
+            except Exception as e:
+                logger.warning(f"Redis initialization failed ({e}). Switching to in-memory cache.")
+                self._backend = MemoryBackend(maxsize=self.maxsize)
 
     async def __aenter__(self):
         return self

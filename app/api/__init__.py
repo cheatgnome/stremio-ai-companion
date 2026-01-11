@@ -39,6 +39,7 @@ class CachedStaticFiles(StaticFiles):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     cache = CACHE_INSTANCE
+    await cache.init()
     if cache.is_redis:
         logger.info("Cache backend: Redis")
     else:
