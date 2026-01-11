@@ -7,6 +7,7 @@ import time
 from functools import lru_cache, wraps
 from typing import Optional, List, Union, Awaitable, Any, Annotated
 
+import httpx
 from fastapi import APIRouter, HTTPException, Depends, Path
 from slugify import slugify
 
@@ -302,43 +303,47 @@ async def _process_catalog_request_internal(
                     return cached_entries
 
         llm_service = LLMService(config)
-        tmdb_service = TMDBService(config.tmdb_read_access_token, language=config.language)
 
-        user_intent = detect_user_intent(search)
+        # Use shared HTTP client for all TMDB requests in this session
+        # Set a reasonable timeout for the client (e.g. 15s) to avoid hanging
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            tmdb_service = TMDBService(config.tmdb_read_access_token, language=config.language, client=client)
 
-        if user_intent and user_intent != content_type:
-            logger.debug(
-                f"User intent '{user_intent}' conflicts with endpoint type '{content_type}', returning empty list"
-            )
-            result = {"metas": []}
-            return result
+            user_intent = detect_user_intent(search)
 
-        if content_type == ContentType.MOVIE:
-            movie_suggestions = await llm_service.generate_movie_suggestions(search, max_results)
-            logger.debug(
-                f"Generated {len(movie_suggestions)} movie suggestions: {[f'{s.title} ({s.year})' for s in movie_suggestions]}"
-            )
-            movie_metas = await _process_metadata_pipeline(
-                movie_suggestions,
-                search_fn=tmdb_service.search_movie,
-                details_fn=tmdb_service.get_movie_details,
-                meta_builder=movie_to_stremio_meta,
-            )
-            logger.debug(f"Returning {len(movie_metas)} movie metadata entries")
-            result = {"metas": movie_metas}
-        else:
-            series_suggestions = await llm_service.generate_tv_suggestions(search, max_results)
-            logger.debug(
-                f"Generated {len(series_suggestions)} TV series suggestions: {[f'{s.title} ({s.year})' for s in series_suggestions]}"
-            )
-            series_metas = await _process_metadata_pipeline(
-                series_suggestions,
-                search_fn=tmdb_service.search_tv,
-                details_fn=tmdb_service.get_tv_details,
-                meta_builder=tv_to_stremio_meta,
-            )
-            logger.debug(f"Returning {len(series_metas)} series metadata entries")
-            result = {"metas": series_metas}
+            if user_intent and user_intent != content_type:
+                logger.debug(
+                    f"User intent '{user_intent}' conflicts with endpoint type '{content_type}', returning empty list"
+                )
+                result = {"metas": []}
+                return result
+
+            if content_type == ContentType.MOVIE:
+                movie_suggestions = await llm_service.generate_movie_suggestions(search, max_results)
+                logger.debug(
+                    f"Generated {len(movie_suggestions)} movie suggestions: {[f'{s.title} ({s.year})' for s in movie_suggestions]}"
+                )
+                movie_metas = await _process_metadata_pipeline(
+                    movie_suggestions,
+                    search_fn=tmdb_service.search_movie,
+                    details_fn=tmdb_service.get_movie_details,
+                    meta_builder=movie_to_stremio_meta,
+                )
+                logger.debug(f"Returning {len(movie_metas)} movie metadata entries")
+                result = {"metas": movie_metas}
+            else:
+                series_suggestions = await llm_service.generate_tv_suggestions(search, max_results)
+                logger.debug(
+                    f"Generated {len(series_suggestions)} TV series suggestions: {[f'{s.title} ({s.year})' for s in series_suggestions]}"
+                )
+                series_metas = await _process_metadata_pipeline(
+                    series_suggestions,
+                    search_fn=tmdb_service.search_tv,
+                    details_fn=tmdb_service.get_tv_details,
+                    meta_builder=tv_to_stremio_meta,
+                )
+                logger.debug(f"Returning {len(series_metas)} series metadata entries")
+                result = {"metas": series_metas}
 
         # Cache with TMDB posters only
         if cache_time_seconds and key:
