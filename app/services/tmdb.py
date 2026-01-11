@@ -79,7 +79,13 @@ class TMDBService:
     from the TMDB API.
     """
 
-    def __init__(self, read_access_token: str, language: str, timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        read_access_token: str,
+        language: str,
+        timeout: float = 10.0,
+        client: Optional[httpx.AsyncClient] = None,
+    ) -> None:
         """
         Initialize the TMDB service with an access token.
 
@@ -87,12 +93,14 @@ class TMDBService:
             read_access_token: TMDB API read access token
             language: Language code for API requests
             timeout: HTTP request timeout in seconds
+            client: Optional shared httpx.AsyncClient
         """
         self.read_access_token = read_access_token
         self.base_url = "https://api.themoviedb.org/3"
         self.timeout = timeout
         self.logger = logging.getLogger("stremio_ai_companion.TMDBService")
         self.language = language
+        self.client = client
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -115,26 +123,35 @@ class TMDBService:
         Returns:
             Response data or None if request failed
         """
+        if self.client:
+            return await self._execute_request(self.client, endpoint, params)
+
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
-                response = await client.get(f"{self.base_url}/{endpoint}", params=params, headers=self._headers)
-                response.raise_for_status()
+            return await self._execute_request(client, endpoint, params)
 
-                if response.status_code == 401:
-                    self.logger.error("TMDB API authentication failed - check read access token")
-                    return None
+    async def _execute_request(
+        self, client: httpx.AsyncClient, endpoint: str, params: dict[str, str]
+    ) -> Optional[dict[str, Any]]:
+        """Execute the request with the given client."""
+        try:
+            response = await client.get(f"{self.base_url}/{endpoint}", params=params, headers=self._headers)
+            response.raise_for_status()
 
-                return response.json()
+            if response.status_code == 401:
+                self.logger.error("TMDB API authentication failed - check read access token")
+                return None
 
-            except httpx.TimeoutException:
-                self.logger.warning(f"TMDB request timeout for endpoint: {endpoint}")
-                return None
-            except httpx.HTTPStatusError as e:
-                self.logger.error(f"TMDB HTTP error {e.response.status_code} for endpoint: {endpoint}")
-                return None
-            except Exception as e:
-                self.logger.error(f"TMDB request error for {endpoint}: {e}")
-                return None
+            return response.json()
+
+        except httpx.TimeoutException:
+            self.logger.warning(f"TMDB request timeout for endpoint: {endpoint}")
+            return None
+        except httpx.HTTPStatusError as e:
+            self.logger.error(f"TMDB HTTP error {e.response.status_code} for endpoint: {endpoint}")
+            return None
+        except Exception as e:
+            self.logger.error(f"TMDB request error for {endpoint}: {e}")
+            return None
 
     async def search_movie(
         self,
