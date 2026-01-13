@@ -35,6 +35,77 @@ def parse_movie_with_year(movie_title: str) -> Tuple[str, Optional[int]]:
     return movie_title.strip(), None
 
 
+def parse_title_with_year(search: str) -> Tuple[str, Optional[int]]:
+    """
+    Parse a search query to extract a trailing year when present.
+
+    Args:
+        search: Search query from user
+
+    Returns:
+        A tuple containing the cleaned title and optional year.
+    """
+    title, year = parse_movie_with_year(search)
+    if year:
+        return title, year
+
+    trailing_year_pattern = r"\s+(?P<year>(19|20)\d{2})\s*$"
+    match = re.search(trailing_year_pattern, search)
+    if match:
+        year = int(match.group("year"))
+        title = re.sub(trailing_year_pattern, "", search).strip()
+        return title, year
+
+    return search.strip(), None
+
+
+def is_specific_title_query(search: str) -> bool:
+    """
+    Determine if a search query looks like a specific title lookup.
+
+    Args:
+        search: Search query from user
+
+    Returns:
+        True if the query looks like a specific title, False otherwise.
+    """
+    if not search:
+        return False
+
+    search_lower = search.lower().strip()
+
+    if re.search(r"[\"“”‘’]", search):
+        return True
+
+    if re.search(r"\((19|20)\d{2}\)", search):
+        return True
+
+    if re.search(r"\b(19|20)\d{2}\b", search_lower):
+        return True
+
+    discovery_patterns = [
+        r"\btop\b",
+        r"\bbest\b",
+        r"\bpopular\b",
+        r"\btrending\b",
+        r"\brecommend(?:ation|ations|ed|ing)?\b",
+        r"\bsuggest(?:ion|ions|ed|ing)?\b",
+        r"\blist\b",
+        r"\branked\b",
+        r"\bcollection\b",
+        r"\btheme\b",
+        r"\b(movies?|films?|shows?|series|tv)\b",
+        r"\b(similar to|like)\b",
+        r"\b2000s|1990s|1980s|1970s|1960s|1950s\b",
+    ]
+
+    if any(re.search(pattern, search_lower) for pattern in discovery_patterns):
+        return False
+
+    word_count = len(search_lower.split())
+    return word_count <= 6
+
+
 def detect_user_intent(search: str) -> Optional[str]:
     """
     Detect user intent from search query using regex patterns.
