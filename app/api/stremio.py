@@ -133,7 +133,7 @@ def build_manifest(
         name = "AI Companion"
         description = "Your AI-powered movie discovery companion"
 
-    # Build catalogs for specified types using predefined prompts, plus optional feed catalogs
+    # Build catalogs for specified types using predefined prompts.
     catalogs = []
     for content_type in types:
         if content_type == "movie":
@@ -145,19 +145,6 @@ def build_manifest(
                     "extra": [{"name": "search", "isRequired": True}],
                 }
             )
-            if settings.ENABLE_FEED_CATALOGS and (
-                changed_catalogs and include_catalogs_movies is not None or not changed_catalogs
-            ):
-                allowed = set(include_catalogs_movies) if changed_catalogs else set(CATALOG_PROMPTS.keys())
-                for cid, cfg in CATALOG_PROMPTS.items():
-                    if cid in allowed:
-                        catalogs.append(
-                            {
-                                "type": "movie",
-                                "id": f"{cid}_movie",
-                                "name": cfg["title"],
-                            }
-                        )
         elif content_type == "series":
             catalogs.append(
                 {
@@ -167,19 +154,6 @@ def build_manifest(
                     "extra": [{"name": "search", "isRequired": True}],
                 }
             )
-            if settings.ENABLE_FEED_CATALOGS and (
-                changed_catalogs and include_catalogs_series is not None or not changed_catalogs
-            ):
-                allowed = set(include_catalogs_series) if changed_catalogs else set(CATALOG_PROMPTS.keys())
-                for cid, cfg in CATALOG_PROMPTS.items():
-                    if cid in allowed:
-                        catalogs.append(
-                            {
-                                "type": "series",
-                                "id": f"{cid}_series",
-                                "name": cfg["title"],
-                            }
-                        )
 
     return {
         "id": addon_id,
@@ -282,6 +256,7 @@ async def _process_catalog_request_internal(
 
         logger.debug(f"Processing {content_type} catalog request for '{search}' with {max_results} max results")
 
+        specific_title_query = is_specific_title_query(search)
         key = None
         cache = CACHE_INSTANCE
         if cache_time_seconds is not None:
@@ -296,7 +271,7 @@ async def _process_catalog_request_internal(
             except Exception:
                 key = None
 
-            if key:
+            if key and not specific_title_query:
                 cached_entries = await cache.aget(key)
                 if cached_entries is not None and len(cached_entries.get("metas", [])) > 0:
                     logger.debug(f"Cache hit for key={key}")
@@ -319,7 +294,7 @@ async def _process_catalog_request_internal(
                 return result
 
             result = None
-            if is_specific_title_query(search):
+            if specific_title_query:
                 title, year = parse_title_with_year(search)
                 if title:
                     logger.debug(
