@@ -200,14 +200,12 @@ class TMDBService:
 
         if best_result and best_score >= FUZZY_MATCH_THRESHOLD:
             self.logger.debug(
-                f"Found TMDB result for '{title}': {best_result.get('title', 'Unknown')} "
-                f"(Score: {best_score:.2f})"
+                f"Found TMDB result for '{title}': {best_result.get('title', 'Unknown')} " f"(Score: {best_score:.2f})"
             )
             return best_result
 
         self.logger.info(
-            f"No close match found for movie '{title}' (Best score: {best_score:.2f}). "
-            "Triggering AI fallback."
+            f"No close match found for movie '{title}' (Best score: {best_score:.2f}). " "Triggering AI fallback."
         )
         return None
 
@@ -257,14 +255,12 @@ class TMDBService:
 
         if best_result and best_score >= FUZZY_MATCH_THRESHOLD:
             self.logger.debug(
-                f"Found TMDB result for '{title}': {best_result.get('name', 'Unknown')} "
-                f"(Score: {best_score:.2f})"
+                f"Found TMDB result for '{title}': {best_result.get('name', 'Unknown')} " f"(Score: {best_score:.2f})"
             )
             return best_result
 
         self.logger.info(
-            f"No close match found for series '{title}' (Best score: {best_score:.2f}). "
-            "Triggering AI fallback."
+            f"No close match found for series '{title}' (Best score: {best_score:.2f}). " "Triggering AI fallback."
         )
         return None
 
