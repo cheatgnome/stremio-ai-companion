@@ -2,6 +2,7 @@
 TMDB service for the Stremio AI Companion application.
 """
 
+import difflib
 import logging
 from typing import Any, Optional
 
@@ -178,12 +179,37 @@ class TMDBService:
             self.logger.warning(f"No TMDB results found for movie '{title}'" + (f" ({year})" if year else ""))
             return None
 
-        result = data["results"][0]
-        self.logger.debug(
-            f"Found TMDB result for '{title}': {result.get('title', 'Unknown')} "
-            f"({result.get('release_date', 'Unknown')[:4] if result.get('release_date') else 'Unknown'})"
+        best_result = None
+        best_score = 0.0
+
+        for res in data["results"]:
+            res_title = res.get("title", "")
+            # exact match check first
+            if res_title.lower() == title.lower():
+                best_result = res
+                best_score = 1.0
+                break
+
+            score = difflib.SequenceMatcher(None, title.lower(), res_title.lower()).ratio()
+            if score > best_score:
+                best_score = score
+                best_result = res
+
+        # Threshold for accepting a fuzzy match
+        FUZZY_MATCH_THRESHOLD = 0.85
+
+        if best_result and best_score >= FUZZY_MATCH_THRESHOLD:
+            self.logger.debug(
+                f"Found TMDB result for '{title}': {best_result.get('title', 'Unknown')} "
+                f"(Score: {best_score:.2f})"
+            )
+            return best_result
+
+        self.logger.info(
+            f"No close match found for movie '{title}' (Best score: {best_score:.2f}). "
+            "Triggering AI fallback."
         )
-        return result
+        return None
 
     async def search_tv(
         self,
@@ -210,12 +236,37 @@ class TMDBService:
             self.logger.warning(f"No TMDB results found for series '{title}'" + (f" ({year})" if year else ""))
             return None
 
-        result = data["results"][0]
-        self.logger.debug(
-            f"Found TMDB result for '{title}': {result.get('name', 'Unknown')} "
-            f"({result.get('first_air_date', 'Unknown')[:4] if result.get('first_air_date') else 'Unknown'})"
+        best_result = None
+        best_score = 0.0
+
+        for res in data["results"]:
+            res_name = res.get("name", "")
+            # exact match check first
+            if res_name.lower() == title.lower():
+                best_result = res
+                best_score = 1.0
+                break
+
+            score = difflib.SequenceMatcher(None, title.lower(), res_name.lower()).ratio()
+            if score > best_score:
+                best_score = score
+                best_result = res
+
+        # Threshold for accepting a fuzzy match
+        FUZZY_MATCH_THRESHOLD = 0.85
+
+        if best_result and best_score >= FUZZY_MATCH_THRESHOLD:
+            self.logger.debug(
+                f"Found TMDB result for '{title}': {best_result.get('name', 'Unknown')} "
+                f"(Score: {best_score:.2f})"
+            )
+            return best_result
+
+        self.logger.info(
+            f"No close match found for series '{title}' (Best score: {best_score:.2f}). "
+            "Triggering AI fallback."
         )
-        return result
+        return None
 
     async def get_movie_details(self, movie_id: int) -> Optional[dict[str, Any]]:
         """
