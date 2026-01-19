@@ -4,7 +4,7 @@ TMDB service for the Stremio AI Companion application.
 
 import difflib
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 import httpx
 from pydantic import BaseModel, ConfigDict
@@ -158,7 +158,7 @@ class TMDBService:
         self,
         title: str,
         year: Optional[int] = None,
-    ) -> Optional[dict[str, Any]]:
+    ) -> List[dict[str, Any]]:
         """
         Search for a movie by title and optional year.
 
@@ -167,7 +167,7 @@ class TMDBService:
             year: Optional release year to filter by
 
         Returns:
-            Dictionary with movie data or None if not found
+            List of dictionaries with movie data or empty list if not found
         """
         self.logger.debug(f"Searching TMDB for movie: '{title}'" + (f" ({year})" if year else ""))
 
@@ -177,43 +177,64 @@ class TMDBService:
 
         if not data or not data.get("results"):
             self.logger.warning(f"No TMDB results found for movie '{title}'" + (f" ({year})" if year else ""))
-            return None
+            return []
 
-        best_result = None
-        best_score = 0.0
+        # Thresholds
+        FUZZY_MATCH_THRESHOLD = 0.85
+        RELAXED_MATCH_THRESHOLD = 0.65
+        TOP_RESULT_THRESHOLD = 0.40
 
-        for res in data["results"]:
+        matches = []
+        tmdb_results = data["results"]
+
+        for index, res in enumerate(tmdb_results):
             res_title = res.get("title", "")
-            # exact match check first
+
+            # Exact match
             if res_title.lower() == title.lower():
-                best_result = res
-                best_score = 1.0
-                break
+                res["_score"] = 1.0
+                matches.append(res)
+                continue
 
             score = difflib.SequenceMatcher(None, title.lower(), res_title.lower()).ratio()
-            if score > best_score:
-                best_score = score
-                best_result = res
+            res["_score"] = score
 
-        # Threshold for accepting a fuzzy match
-        FUZZY_MATCH_THRESHOLD = 0.85
+            # Keep if high enough score
+            if score >= FUZZY_MATCH_THRESHOLD:
+                matches.append(res)
+            # Keep if relaxed score
+            elif score >= RELAXED_MATCH_THRESHOLD:
+                matches.append(res)
+            # Keep top result if it has a decent score
+            elif index == 0 and score >= TOP_RESULT_THRESHOLD:
+                matches.append(res)
 
-        if best_result and best_score >= FUZZY_MATCH_THRESHOLD:
+        # Deduplicate by ID
+        unique_matches = []
+        seen_ids = set()
+        for m in matches:
+            if m["id"] not in seen_ids:
+                unique_matches.append(m)
+                seen_ids.add(m["id"])
+
+        # Sort by score descending
+        unique_matches.sort(key=lambda x: x.get("_score", 0), reverse=True)
+
+        if unique_matches:
+            top_matches = unique_matches[:5]
             self.logger.debug(
-                f"Found TMDB result for '{title}': {best_result.get('title', 'Unknown')} " f"(Score: {best_score:.2f})"
+                f"Found {len(top_matches)} TMDB results for '{title}': {[m.get('title') for m in top_matches]}"
             )
-            return best_result
+            return top_matches
 
-        self.logger.info(
-            f"No close match found for movie '{title}' (Best score: {best_score:.2f}). " "Triggering AI fallback."
-        )
-        return None
+        self.logger.info(f"No close match found for movie '{title}'. Triggering AI fallback.")
+        return []
 
     async def search_tv(
         self,
         title: str,
         year: Optional[int] = None,
-    ) -> Optional[dict[str, Any]]:
+    ) -> List[dict[str, Any]]:
         """
         Search for a TV series by title and optional year.
 
@@ -222,7 +243,7 @@ class TMDBService:
             year: Optional first air date year to filter by
 
         Returns:
-            Dictionary with TV series data or None if not found
+            List of dictionaries with TV series data or empty list if not found
         """
         self.logger.debug(f"Searching TMDB for TV series: '{title}'" + (f" ({year})" if year else ""))
 
@@ -232,37 +253,58 @@ class TMDBService:
 
         if not data or not data.get("results"):
             self.logger.warning(f"No TMDB results found for series '{title}'" + (f" ({year})" if year else ""))
-            return None
+            return []
 
-        best_result = None
-        best_score = 0.0
+        # Thresholds
+        FUZZY_MATCH_THRESHOLD = 0.85
+        RELAXED_MATCH_THRESHOLD = 0.65
+        TOP_RESULT_THRESHOLD = 0.40
 
-        for res in data["results"]:
+        matches = []
+        tmdb_results = data["results"]
+
+        for index, res in enumerate(tmdb_results):
             res_name = res.get("name", "")
-            # exact match check first
+
+            # Exact match
             if res_name.lower() == title.lower():
-                best_result = res
-                best_score = 1.0
-                break
+                res["_score"] = 1.0
+                matches.append(res)
+                continue
 
             score = difflib.SequenceMatcher(None, title.lower(), res_name.lower()).ratio()
-            if score > best_score:
-                best_score = score
-                best_result = res
+            res["_score"] = score
 
-        # Threshold for accepting a fuzzy match
-        FUZZY_MATCH_THRESHOLD = 0.85
+            # Keep if high enough score
+            if score >= FUZZY_MATCH_THRESHOLD:
+                matches.append(res)
+            # Keep if relaxed score
+            elif score >= RELAXED_MATCH_THRESHOLD:
+                matches.append(res)
+            # Keep top result if it has a decent score
+            elif index == 0 and score >= TOP_RESULT_THRESHOLD:
+                matches.append(res)
 
-        if best_result and best_score >= FUZZY_MATCH_THRESHOLD:
+        # Deduplicate by ID
+        unique_matches = []
+        seen_ids = set()
+        for m in matches:
+            if m["id"] not in seen_ids:
+                unique_matches.append(m)
+                seen_ids.add(m["id"])
+
+        # Sort by score descending
+        unique_matches.sort(key=lambda x: x.get("_score", 0), reverse=True)
+
+        if unique_matches:
+            top_matches = unique_matches[:5]
             self.logger.debug(
-                f"Found TMDB result for '{title}': {best_result.get('name', 'Unknown')} " f"(Score: {best_score:.2f})"
+                f"Found {len(top_matches)} TMDB results for '{title}': {[m.get('name') for m in top_matches]}"
             )
-            return best_result
+            return top_matches
 
-        self.logger.info(
-            f"No close match found for series '{title}' (Best score: {best_score:.2f}). " "Triggering AI fallback."
-        )
-        return None
+        self.logger.info(f"No close match found for series '{title}'. Triggering AI fallback.")
+        return []
 
     async def get_movie_details(self, movie_id: int) -> Optional[dict[str, Any]]:
         """

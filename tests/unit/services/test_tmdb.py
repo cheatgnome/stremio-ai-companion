@@ -39,11 +39,12 @@ class TestTMDBService:
         mock_get.return_value = mock_response
 
         # Call the method
-        result = await tmdb_service.search_movie("Fight Club")
+        results = await tmdb_service.search_movie("Fight Club")
 
         # Verify the result
-        assert result["id"] == 550
-        assert result["title"] == "Fight Club"
+        assert len(results) == 1
+        assert results[0]["id"] == 550
+        assert results[0]["title"] == "Fight Club"
 
         # Verify the API was called correctly
         mock_get.assert_called_once()
@@ -80,10 +81,10 @@ class TestTMDBService:
         mock_get.return_value = mock_response
 
         # Call the method
-        result = await tmdb_service.search_movie("Nonexistent Movie")
+        results = await tmdb_service.search_movie("Nonexistent Movie")
 
         # Verify the result
-        assert result is None
+        assert results == []
 
     @patch("httpx.AsyncClient.get")
     async def test_search_movie_timeout(self, mock_get, tmdb_service):
@@ -92,10 +93,10 @@ class TestTMDBService:
         mock_get.side_effect = httpx.TimeoutException("Timeout")
 
         # Call the method
-        result = await tmdb_service.search_movie("Fight Club")
+        results = await tmdb_service.search_movie("Fight Club")
 
         # Verify the result
-        assert result is None
+        assert results == []
 
     @patch("httpx.AsyncClient.get")
     async def test_search_movie_http_error(self, mock_get, tmdb_service):
@@ -109,10 +110,10 @@ class TestTMDBService:
         mock_get.return_value = mock_response
 
         # Call the method
-        result = await tmdb_service.search_movie("Fight Club")
+        results = await tmdb_service.search_movie("Fight Club")
 
         # Verify the result
-        assert result is None
+        assert results == []
 
     @patch("httpx.AsyncClient.get")
     async def test_get_movie_details_success(self, mock_get, tmdb_service):
@@ -150,11 +151,12 @@ class TestTMDBService:
         mock_get.return_value = mock_response
 
         # Call the method
-        result = await tmdb_service.search_tv("Game of Thrones")
+        results = await tmdb_service.search_tv("Game of Thrones")
 
         # Verify the result
-        assert result["id"] == 1399
-        assert result["name"] == "Game of Thrones"
+        assert len(results) == 1
+        assert results[0]["id"] == 1399
+        assert results[0]["name"] == "Game of Thrones"
 
         # Verify the API was called correctly
         mock_get.assert_called_once()
@@ -191,10 +193,10 @@ class TestTMDBService:
         mock_get.return_value = mock_response
 
         # Call the method
-        result = await tmdb_service.search_tv("Nonexistent Series")
+        results = await tmdb_service.search_tv("Nonexistent Series")
 
         # Verify the result
-        assert result is None
+        assert results == []
 
     @patch("httpx.AsyncClient.get")
     async def test_get_tv_details_success(self, mock_get, tmdb_service):
