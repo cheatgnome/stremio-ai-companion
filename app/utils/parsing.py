@@ -80,9 +80,6 @@ def is_specific_title_query(search: str) -> bool:
     if re.search(r"\((19|20)\d{2}\)", search):
         return True
 
-    if re.search(r"\b(19|20)\d{2}\b", search_lower):
-        return True
-
     discovery_patterns = [
         r"\btop\b",
         r"\bbest\b",
@@ -101,6 +98,9 @@ def is_specific_title_query(search: str) -> bool:
 
     if any(re.search(pattern, search_lower) for pattern in discovery_patterns):
         return False
+
+    if re.search(r"\b(19|20)\d{2}\b", search_lower):
+        return True
 
     word_count = len(search_lower.split())
     return word_count <= 6
