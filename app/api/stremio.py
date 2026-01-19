@@ -303,21 +303,31 @@ async def _process_catalog_request_internal(
                         + f" as {content_type.value}"
                     )
                     if content_type == ContentType.MOVIE:
-                        direct_result = await tmdb_service.search_movie(title, year)
-                        if direct_result:
-                            details = await tmdb_service.get_movie_details(direct_result["id"])
-                            if details:
-                                meta = movie_to_stremio_meta(details, poster_url=None)
-                                result = {"metas": [meta]}
-                                logger.debug(f"Returning direct TMDB match for movie '{title}'")
+                        direct_results = await tmdb_service.search_movie(title, year)
+                        if direct_results:
+                            metas = []
+                            for res in direct_results:
+                                details = await tmdb_service.get_movie_details(res["id"])
+                                if details:
+                                    meta = movie_to_stremio_meta(details, poster_url=None)
+                                    metas.append(meta)
+
+                            if metas:
+                                result = {"metas": metas}
+                                logger.debug(f"Returning {len(metas)} direct TMDB matches for movie '{title}'")
                     else:
-                        direct_result = await tmdb_service.search_tv(title, year)
-                        if direct_result:
-                            details = await tmdb_service.get_tv_details(direct_result["id"])
-                            if details:
-                                meta = tv_to_stremio_meta(details, poster_url=None)
-                                result = {"metas": [meta]}
-                                logger.debug(f"Returning direct TMDB match for series '{title}'")
+                        direct_results = await tmdb_service.search_tv(title, year)
+                        if direct_results:
+                            metas = []
+                            for res in direct_results:
+                                details = await tmdb_service.get_tv_details(res["id"])
+                                if details:
+                                    meta = tv_to_stremio_meta(details, poster_url=None)
+                                    metas.append(meta)
+
+                            if metas:
+                                result = {"metas": metas}
+                                logger.debug(f"Returning {len(metas)} direct TMDB matches for series '{title}'")
 
             if result is None and content_type == ContentType.MOVIE:
                 movie_suggestions = await llm_service.generate_movie_suggestions(search, max_results)
