@@ -227,9 +227,7 @@ class TMDBService:
             )
             return top_matches
 
-        self.logger.info(
-            f"No close match found for movie '{title}'. Triggering AI fallback."
-        )
+        self.logger.info(f"No close match found for movie '{title}'. Triggering AI fallback.")
         return []
 
     async def search_tv(
@@ -283,7 +281,7 @@ class TMDBService:
             # Keep if relaxed score
             elif score >= RELAXED_MATCH_THRESHOLD:
                 matches.append(res)
-             # Keep top result if it has a decent score
+            # Keep top result if it has a decent score
             elif index == 0 and score >= TOP_RESULT_THRESHOLD:
                 matches.append(res)
 
@@ -305,9 +303,7 @@ class TMDBService:
             )
             return top_matches
 
-        self.logger.info(
-            f"No close match found for series '{title}'. Triggering AI fallback."
-        )
+        self.logger.info(f"No close match found for series '{title}'. Triggering AI fallback.")
         return []
 
     async def get_movie_details(self, movie_id: int) -> Optional[dict[str, Any]]:
